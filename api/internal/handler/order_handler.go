@@ -19,6 +19,17 @@ func NewOrderHandler(service *service.OrderService) *OrderHandler {
 	return &OrderHandler{service: service}
 }
 
+// CreateOrder godoc
+// @Summary      Создать новый заказ
+// @Description  Принимает товары и сбрасывает фоновую задачу отправки уведомления в Asynq
+// @Tags         orders
+// @Accept       json
+// @Produce      json
+// @Param        payload body domain.CreateOrderRequest true "Данные заказа"
+// @Success      201 {object} domain.Order
+// @Failure      400 {string} string "Invalid request body"
+// @Failure      500 {string} string "Internal Server Error"
+// @Router       /orders [post]
 func (h *OrderHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 	var req domain.CreateOrderRequest
 

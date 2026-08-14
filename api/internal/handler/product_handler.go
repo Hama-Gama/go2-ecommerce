@@ -18,6 +18,16 @@ func NewProductHandler(service *service.ProductService) *ProductHandler {
 	return &ProductHandler{service: service}
 }
 
+// GetProducts godoc
+// @Summary      Получить список товаров
+// @Description  Возвращает список всех товаров или результаты поиска по запросу
+// @Tags         products
+// @Accept       json
+// @Produce      json
+// @Param        query query string false "Поисковый запрос"
+// @Success      200 {object} domain.ProductListResponse
+// @Failure      500 {string} string "Internal Server Error"
+// @Router       /products [get]
 func (h *ProductHandler) GetProducts(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	query := r.URL.Query()

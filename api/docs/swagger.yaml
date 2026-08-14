@@ -1,0 +1,163 @@
+basePath: /api/v1
+definitions:
+  domain.CreateOrderItemRequest:
+    properties:
+      product_id:
+        type: integer
+      quantity:
+        type: integer
+    type: object
+  domain.CreateOrderRequest:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/domain.CreateOrderItemRequest'
+        type: array
+      user_id:
+        description: Пока хардкодим/берём из параметров, пока нет JWT Auth
+        type: integer
+    type: object
+  domain.Cursor:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: integer
+    type: object
+  domain.Order:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: integer
+      items:
+        items:
+          $ref: '#/definitions/domain.OrderItem'
+        type: array
+      status:
+        $ref: '#/definitions/domain.OrderStatus'
+      total_amount:
+        type: number
+      updated_at:
+        type: string
+      user_id:
+        type: integer
+    type: object
+  domain.OrderItem:
+    properties:
+      id:
+        type: integer
+      order_id:
+        type: integer
+      product_id:
+        type: integer
+      quantity:
+        type: integer
+      unit_price:
+        type: number
+    type: object
+  domain.OrderStatus:
+    enum:
+    - pending
+    - completed
+    - cancelled
+    type: string
+    x-enum-varnames:
+    - OrderStatusPending
+    - OrderStatusCompleted
+    - OrderStatusCancelled
+  domain.Product:
+    properties:
+      category_id:
+        type: integer
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: integer
+      price:
+        type: number
+      slug:
+        type: string
+      stock:
+        type: integer
+      title:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  domain.ProductListResponse:
+    properties:
+      has_more:
+        type: boolean
+      next_cursor:
+        $ref: '#/definitions/domain.Cursor'
+      products:
+        items:
+          $ref: '#/definitions/domain.Product'
+        type: array
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: API сервис интернет-магазина на Go (Chi, PostgreSQL, Redis, Asynq).
+  title: Go E-Commerce API
+  version: "1.0"
+paths:
+  /orders:
+    post:
+      consumes:
+      - application/json
+      description: Принимает товары и сбрасывает фоновую задачу отправки уведомления
+        в Asynq
+      parameters:
+      - description: Данные заказа
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/domain.CreateOrderRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/domain.Order'
+        "400":
+          description: Invalid request body
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Создать новый заказ
+      tags:
+      - orders
+  /products:
+    get:
+      consumes:
+      - application/json
+      description: Возвращает список всех товаров или результаты поиска по запросу
+      parameters:
+      - description: Поисковый запрос
+        in: query
+        name: query
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.ProductListResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Получить список товаров
+      tags:
+      - products
+swagger: "2.0"

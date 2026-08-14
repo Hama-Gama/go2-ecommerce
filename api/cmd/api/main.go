@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -16,18 +17,33 @@ import (
 	"github.com/yourusername/go-ecommerce-api/internal/repository"
 	"github.com/yourusername/go-ecommerce-api/internal/service"
 	"github.com/yourusername/go-ecommerce-api/internal/task"
+	_ "github.com/yourusername/go-ecommerce-api/docs"
+	"github.com/swaggo/http-swagger"
 )
 
+// Helper-функция для чтения переменных окружения с фолбэком
+func getEnv(key, defaultValue string) string {
+	if val := os.Getenv(key); val != "" {
+		return val
+	}
+	return defaultValue
+}
+
+// @title           Go E-Commerce API
+// @version         1.0
+// @description     API сервис интернет-магазина на Go (Chi, PostgreSQL, Redis, Asynq).
+// @host            localhost:8080
+// @BasePath        /api/v1
 func main() {
 	ctx := context.Background()
 
-	// 1. Подключение к PostgreSQL
+	// 1. Подключение к PostgreSQL (динамически из Env, чтобы корректно работать в Docker)
 	pgCfg := repository.PostgresConfig{
-		Host:     "localhost",
-		Port:     "5432",
-		User:     "postgres",
-		Password: "postgrespassword",
-		DBName:   "ecommerce_db",
+		Host:     getEnv("DB_HOST", "localhost"),
+		Port:     getEnv("DB_PORT", "5432"),
+		User:     getEnv("DB_USER", "postgres"),
+		Password: getEnv("DB_PASSWORD", "postgrespassword"),
+		DBName:   getEnv("DB_NAME", "ecommerce_db"),
 		SSLMode:  "disable",
 	}
 
@@ -37,9 +53,9 @@ func main() {
 	}
 	defer pool.Close()
 
-	// 2. Опции подключения к Redis для Asynq
+	// 2. Опции подключения к Redis для Asynq (динамически из Env)
 	redisOpt := asynq.RedisClientOpt{
-		Addr: "localhost:6379",
+		Addr: getEnv("REDIS_ADDR", "localhost:6379"),
 	}
 
 	// 3. Инициализация Asynq Distributor (Client) & Processor (Worker)
@@ -82,6 +98,7 @@ func main() {
 	// Routes
 	r.Get("/api/v1/products", productHnd.GetProducts)
 	r.Post("/api/v1/orders", orderHnd.CreateOrder)
+	r.Get("/swagger/*", httpSwagger.WrapHandler)
 
 	fmt.Println("🚀 API Server & Asynq Worker are running on :8080")
 	if err := http.ListenAndServe(":8080", r); err != nil {
