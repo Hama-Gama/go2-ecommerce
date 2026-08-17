@@ -1,10 +1,9 @@
 'use client'
 
-import { useSyncExternalStore, useState } from 'react'
+import { useState } from 'react'
 import { useCartStore } from '@/store/useCartStore'
+import { useStore } from '@/hooks/useStore'
 import Link from 'next/link'
-
-const emptySubscribe = () => () => {}
 
 export default function CartPage() {
 	const [isSubmitting, setIsSubmitting] = useState(false)
@@ -12,17 +11,9 @@ export default function CartPage() {
 		'idle',
 	)
 
-	const items = useSyncExternalStore(
-		emptySubscribe,
-		() => useCartStore.getState().items,
-		() => [],
-	)
-
-	const totalPrice = useSyncExternalStore(
-		emptySubscribe,
-		() => useCartStore.getState().getTotalPrice(),
-		() => 0,
-	)
+	// Безопасно получаем состояние из localStorage без ошибок hydration mismatch
+	const items = useStore(useCartStore, state => state.items) ?? []
+	const totalPrice = useStore(useCartStore, state => state.getTotalPrice()) ?? 0
 
 	const updateQuantity = useCartStore(state => state.updateQuantity)
 	const removeFromCart = useCartStore(state => state.removeFromCart)
@@ -43,7 +34,7 @@ export default function CartPage() {
 						'Content-Type': 'application/json',
 					},
 					body: JSON.stringify({
-						user_id: 'user-demo-123', // временный ID пользователя до интеграции Auth
+						user_id: 'user-demo-123',
 						items: items.map(item => ({
 							product_id: item.id,
 							quantity: item.quantity,
@@ -165,7 +156,7 @@ export default function CartPage() {
 						disabled={isSubmitting}
 						className='w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white font-bold py-3 px-4 rounded-lg transition'
 					>
-						{isSubmitting ? 'Оформление...' : 'Оформить заказ'}
+						{isSubmitting ? 'Оформить заказ...' : 'Оформить заказ'}
 					</button>
 				</div>
 			</div>

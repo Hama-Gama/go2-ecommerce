@@ -1,17 +1,11 @@
 'use client'
 
-import { useSyncExternalStore } from 'react'
 import { useCartStore } from '../store/useCartStore'
+import { useStore } from '../hooks/useStore'
 import Link from 'next/link'
 
-const emptySubscribe = () => () => {}
-
 export function CartBadge() {
-	const totalItems = useSyncExternalStore(
-		emptySubscribe,
-		() => useCartStore.getState().getTotalItems(),
-		() => 0,
-	)
+	const totalItems = useStore(useCartStore, state => state.getTotalItems()) ?? 0
 
 	return (
 		<Link

@@ -1,7 +1,6 @@
 import type { Metadata } from 'next'
 import { Inter, Geist } from 'next/font/google'
 import './globals.css'
-import { CartProvider } from '@/context/CartContext'
 import { cn } from '@/lib/utils'
 import { Header } from '@/components/Header'
 
@@ -21,10 +20,8 @@ export default function RootLayout({
 	return (
 		<html lang='en' className={cn('font-sans', geist.variable)}>
 			<body className={inter.className}>
-				<CartProvider>
-					<Header /> {/* <-- 2. Вставили Header над основным контентом */}
-					<main className='container mx-auto p-4'>{children}</main>
-				</CartProvider>
+				<Header />
+				<main className='container mx-auto p-4'>{children}</main>
 			</body>
 		</html>
 	)
