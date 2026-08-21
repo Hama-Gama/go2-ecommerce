@@ -2,68 +2,72 @@ services:
   postgres:
     image: postgres:16-alpine
     container_name: ecommerce_postgres_prod
-    restart: always
     environment:
-      POSTGRES_USER: ${DB_USER:-postgres}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgrespassword}
-      POSTGRES_DB: ${DB_NAME:-ecommerce_db}
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+      POSTGRES_DB: ecommerce_db
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    networks:
-      - app-network
+    restart: always
 
   redis:
     image: redis:7-alpine
     container_name: ecommerce_redis_prod
-    restart: always
     ports:
       - "6379:6379"
-    networks:
-      - app-network
-  
+    restart: always
+
   api:
     build:
       context: ./api
       dockerfile: Dockerfile
     container_name: ecommerce_api_prod
-    restart: always
-    environment:
-      - PORT=8080
-      - DB_HOST=postgres
-      - POSTGRES_HOST=postgres
-      - DB_PORT=5432
-      - DB_USER=${DB_USER:-postgres}
-      - DB_PASSWORD=${DB_PASSWORD:-postgrespassword}
-      - DB_NAME=${DB_NAME:-ecommerce_db}
-      - REDIS_ADDR=redis:6379
     ports:
       - "8080:8080"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=postgrespassword
+      - DB_NAME=ecommerce_db
+      - REDIS_ADDR=redis:6379
     depends_on:
       - postgres
       - redis
-    networks:
-      - app-network
+    restart: always
 
   web:
     build:
       context: ./web
       dockerfile: Dockerfile
     container_name: ecommerce_web_prod
-    restart: always
-    environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:8080/api/v1
     ports:
       - "3000:3000"
     depends_on:
       - api
-    networks:
-      - app-network
+    restart: always
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: ecommerce_prometheus_prod
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    restart: always
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: ecommerce_grafana_prod
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    depends_on:
+      - prometheus
+    restart: always
 
 volumes:
   postgres_data:
-
-networks:
-  app-network:
-    driver: bridge

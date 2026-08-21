@@ -19,6 +19,8 @@ import (
 	"github.com/yourusername/go-ecommerce-api/internal/task"
 	_ "github.com/yourusername/go-ecommerce-api/docs"
 	"github.com/swaggo/http-swagger"
+
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 // Helper-функция для чтения переменных окружения с фолбэком
@@ -96,6 +98,7 @@ func main() {
 	}))
 
 	// Routes
+	r.Get("/metrics", promhttp.Handler().ServeHTTP)
 	r.Get("/api/v1/products", productHnd.GetProducts)
 	r.Post("/api/v1/orders", orderHnd.CreateOrder)
 	r.Get("/swagger/*", httpSwagger.WrapHandler)
