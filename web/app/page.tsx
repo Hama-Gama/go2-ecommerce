@@ -52,7 +52,7 @@ export default function Home() {
 		const payload = {
 			user_id: 1,
 			items: items.map((item: CartItem) => ({
-				product_id: item.id,
+				product_id: Number(item.id), // <-- Передаем число, а не строку
 				quantity: item.quantity,
 			})),
 		}
