@@ -5,6 +5,10 @@ import { useCartStore } from '@/store/useCartStore'
 import { useStore } from '@/hooks/useStore'
 import Link from 'next/link'
 
+// Динамический URL API с фолбэком на внешний IP
+const API_URL =
+	process.env.NEXT_PUBLIC_API_URL || 'http://135.106.193.11:8080/api/v1'
+
 export default function CartPage() {
 	const [isSubmitting, setIsSubmitting] = useState(false)
 	const [orderStatus, setOrderStatus] = useState<'idle' | 'success' | 'error'>(
@@ -26,22 +30,19 @@ export default function CartPage() {
 		setOrderStatus('idle')
 
 		try {
-			const response = await fetch(
-				`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/api/v1/orders`,
-				{
-					method: 'POST',
-					headers: {
-						'Content-Type': 'application/json',
-					},
-					body: JSON.stringify({
-						user_id: 'user-demo-123',
-						items: items.map(item => ({
-							product_id: item.id,
-							quantity: item.quantity,
-						})),
-					}),
+			const response = await fetch(`${API_URL}/orders`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
 				},
-			)
+				body: JSON.stringify({
+					user_id: 1,
+					items: items.map(item => ({
+						product_id: Number(item.id),
+						quantity: item.quantity,
+					})),
+				}),
+			})
 
 			if (!response.ok) {
 				throw new Error('Ошибка при оформлении заказа')

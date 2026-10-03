@@ -1,18 +1,16 @@
-# Build Stage
-FROM node:20-alpine AS builder
+FROM node:20 AS builder
 WORKDIR /app
+
 COPY package*.json ./
 RUN npm ci
-COPY . .
 
-# Объявляем ARG, чтобы Docker знал про переменную на этапе сборки
-ARG NEXT_PUBLIC_API_URL=http://localhost:8080/api/v1
+ARG NEXT_PUBLIC_API_URL=/api/v1
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 
+COPY . .
 RUN npm run build
 
-# Run Stage
-FROM node:20-alpine AS runner
+FROM node:20 AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 

@@ -4,6 +4,10 @@ import { useState, useEffect } from 'react'
 import { Product, OrderResponse } from '@/types'
 import { useCartStore, CartItem } from '@/store/useCartStore'
 
+// Динамический URL API с фолбэком на внешний IP
+const API_URL =
+	process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1'
+
 export default function Home() {
 	const [products, setProducts] = useState<Product[]>([])
 	const [search, setSearch] = useState('')
@@ -21,12 +25,11 @@ export default function Home() {
 		const fetchProducts = async () => {
 			setLoading(true)
 			try {
-				const queryParam = search.trim()
-					? `?query=${encodeURIComponent(search)}&search=${encodeURIComponent(search)}`
+				const queryParams = search.trim()
+					? `?query=${encodeURIComponent(search)}`
 					: ''
-				const res = await fetch(
-					`http://localhost:8080/api/v1/products${queryParam}`,
-				)
+
+				const res = await fetch(`${API_URL}/products${queryParams}`)
 				if (res.ok) {
 					const data = await res.json()
 					const list = Array.isArray(data) ? data : data.products || []
@@ -52,13 +55,13 @@ export default function Home() {
 		const payload = {
 			user_id: 1,
 			items: items.map((item: CartItem) => ({
-				product_id: Number(item.id), // <-- Передаем число, а не строку
+				product_id: Number(item.id),
 				quantity: item.quantity,
 			})),
 		}
 
 		try {
-			const res = await fetch('http://localhost:8080/api/v1/orders', {
+			const res = await fetch(`${API_URL}/orders`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify(payload),
@@ -79,7 +82,7 @@ export default function Home() {
 	const handleAddToCart = (p: Product) => {
 		addToCart({
 			id: String(p.id),
-			name: p.title, // Передаем title как name для CartItem
+			name: p.title,
 			price: Number(p.price),
 		})
 	}
