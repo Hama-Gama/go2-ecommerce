@@ -24,21 +24,21 @@ func (r *ProductRepository) GetList(ctx context.Context, filter domain.ProductFi
 
 	if filter.Query != "" {
 		query = `
-			SELECT id, category_id, title, slug, description, price, 10 as stock, created_at, updated_at
+			SELECT id, category_id, title, slug, description, price, 10::integer as stock, created_at, updated_at
 			FROM products
-			WHERE (tsv @@ plainto_tsquery('simple', $1) OR title ILIKE '%' || $1 || '%')
+			WHERE title ILIKE '%' || $1 || '%'
 			ORDER BY created_at DESC`
 		args = append(args, filter.Query)
 	} else {
 		query = `
-			SELECT id, category_id, title, slug, description, price, 10 as stock, created_at, updated_at
+			SELECT id, category_id, title, slug, description, price, 10::integer as stock, created_at, updated_at
 			FROM products
 			ORDER BY created_at DESC`
 	}
 
 	rows, err := r.db.Query(ctx, query, args...)
 	if err != nil {
-		return products, fmt.Errorf("failed to query products: %w", err)
+		return nil, fmt.Errorf("failed to query products: %w", err)
 	}
 	defer rows.Close()
 
@@ -56,9 +56,13 @@ func (r *ProductRepository) GetList(ctx context.Context, filter domain.ProductFi
 			&p.UpdatedAt,
 		)
 		if err != nil {
-			return products, fmt.Errorf("failed to scan product: %w", err)
+			return nil, fmt.Errorf("failed to scan product: %w", err)
 		}
 		products = append(products, p)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating product rows: %w", err)
 	}
 
 	return products, nil
