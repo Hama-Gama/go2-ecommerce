@@ -58,11 +58,12 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            mkdir -p /var/www/go-ecommerce
-            cd /var/www/go-ecommerce
+            mkdir -p /home/ubuntu/go-ecommerce
+            cd /home/ubuntu/go-ecommerce
             if [ ! -d .git ]; then
               git clone ${{ secrets.REPO_URL }} .
             else
               git pull origin main
             fi
             docker compose -f docker-compose.prod.yml up -d --build --remove-orphans
+      
