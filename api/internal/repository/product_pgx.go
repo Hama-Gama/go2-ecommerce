@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/yourusername/go-ecommerce-api/internal/domain"
@@ -19,21 +20,47 @@ func NewProductRepository(db *pgxpool.Pool) *ProductRepository {
 func (r *ProductRepository) GetList(ctx context.Context, filter domain.ProductFilter) ([]domain.Product, error) {
 	products := make([]domain.Product, 0)
 
-	var query string
-	var args []interface{}
+	var (
+		conditions []string
+		args       []interface{}
+		argPos     = 1
+	)
 
+	// Поиск по названию
 	if filter.Query != "" {
-		query = `
-			SELECT id, category_id, title, slug, description, price, 10::integer as stock, created_at, updated_at
-			FROM products
-			WHERE title ILIKE '%' || $1 || '%'
-			ORDER BY created_at DESC`
-		args = append(args, filter.Query)
-	} else {
-		query = `
-			SELECT id, category_id, title, slug, description, price, 10::integer as stock, created_at, updated_at
-			FROM products
-			ORDER BY created_at DESC`
+		conditions = append(conditions, fmt.Sprintf("title ILIKE $%d", argPos))
+		args = append(args, "%"+filter.Query+"%")
+		argPos++
+	}
+
+	// Фильтрация по категории (если передана в filter)
+	if filter.CategoryID != nil {
+		conditions = append(conditions, fmt.Sprintf("category_id = $%d", argPos))
+		args = append(args, *filter.CategoryID)
+		argPos++
+	}
+
+	query := `
+		SELECT id, category_id, title, slug, description, price, stock, created_at, updated_at
+		FROM products`
+
+	if len(conditions) > 0 {
+		query += " WHERE " + strings.Join(conditions, " AND ")
+	}
+
+	query += " ORDER BY created_at DESC"
+
+	// Добавляем пагинацию (если заданы Limit и Offset)
+	if filter.Limit > 0 {
+		query += fmt.Sprintf(" LIMIT $%d", argPos)
+		args = append(args, filter.Limit)
+		argPos++
+	}
+
+	if filter.Offset > 0 {
+		query += fmt.Sprintf(" OFFSET $%d", argPos)
+		args = append(args, filter.Offset)
+		argPos++
 	}
 
 	rows, err := r.db.Query(ctx, query, args...)
