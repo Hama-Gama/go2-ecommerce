@@ -33,7 +33,7 @@ func (r *ProductRepository) GetList(ctx context.Context, filter domain.ProductFi
 		argPos++
 	}
 
-	// Фильтрация по категории (если есть поле CategoryID)
+	// Фильтрация по категории
 	if filter.CategoryID != nil {
 		conditions = append(conditions, fmt.Sprintf("category_id = $%d", argPos))
 		args = append(args, *filter.CategoryID)
@@ -50,7 +50,7 @@ func (r *ProductRepository) GetList(ctx context.Context, filter domain.ProductFi
 
 	query += " ORDER BY created_at DESC"
 
-	// Ограничение количества, если задано
+	// Ограничение количества
 	if filter.Limit > 0 {
 		query += fmt.Sprintf(" LIMIT $%d", argPos)
 		args = append(args, filter.Limit)
