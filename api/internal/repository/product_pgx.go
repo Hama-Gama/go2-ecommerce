@@ -26,36 +26,44 @@ func (r *ProductRepository) GetList(ctx context.Context, filter domain.ProductFi
 		argPos     = 1
 	)
 
-	// Поиск по названию
 	if filter.Query != "" {
-		conditions = append(conditions, fmt.Sprintf("title ILIKE $%d", argPos))
+		conditions = append(conditions, fmt.Sprintf("p.title ILIKE $%d", argPos))
 		args = append(args, "%"+filter.Query+"%")
 		argPos++
 	}
 
-	// Фильтрация по категории
 	if filter.CategoryID != nil {
-		conditions = append(conditions, fmt.Sprintf("category_id = $%d", argPos))
+		conditions = append(conditions, fmt.Sprintf("p.category_id = $%d", argPos))
 		args = append(args, *filter.CategoryID)
 		argPos++
 	}
 
+	if filter.MinPrice != nil {
+		conditions = append(conditions, fmt.Sprintf("p.price >= $%d", argPos))
+		args = append(args, *filter.MinPrice)
+		argPos++
+	}
 
-		query := `
-	SELECT p.id, p.category_id, p.title, p.slug, p.description, p.price, COALESCE(i.stock, 0), p.image_url, p.created_at, p.updated_at
-	FROM products p
-	LEFT JOIN inventories i ON p.id = i.product_id`
+	if filter.MaxPrice != nil {
+		conditions = append(conditions, fmt.Sprintf("p.price <= $%d", argPos))
+		args = append(args, *filter.MaxPrice)
+		argPos++
+	}
+
+	query := `
+		SELECT p.id, p.category_id, p.title, p.slug, p.description, p.price, COALESCE(i.stock, 0), p.image_url, p.created_at, p.updated_at
+		FROM products p
+		LEFT JOIN inventories i ON p.id = i.product_id`
 
 	if len(conditions) > 0 {
 		query += " WHERE " + strings.Join(conditions, " AND ")
 	}
 
-	query += " ORDER BY created_at DESC"
+	query += " ORDER BY p.created_at DESC, p.id DESC"
 
-	// Ограничение количества
 	if filter.Limit > 0 {
 		query += fmt.Sprintf(" LIMIT $%d", argPos)
-		args = append(args, filter.Limit)
+		args = append(args, filter.Limit+1)
 		argPos++
 	}
 
@@ -75,6 +83,7 @@ func (r *ProductRepository) GetList(ctx context.Context, filter domain.ProductFi
 			&p.Description,
 			&p.Price,
 			&p.Stock,
+			&p.ImageURL,
 			&p.CreatedAt,
 			&p.UpdatedAt,
 		)
@@ -91,8 +100,7 @@ func (r *ProductRepository) GetList(ctx context.Context, filter domain.ProductFi
 	return products, nil
 }
 
-
-func (r *ProductRepository) Create(ctx context.Context, p *Product) error {
+func (r *ProductRepository) Create(ctx context.Context, p *domain.Product) error {
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to begin tx: %w", err)
