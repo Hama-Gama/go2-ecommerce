@@ -13,9 +13,12 @@ type Product struct {
 	Description string    `json:"description"`
 	Price       float64   `json:"price"`
 	Stock       int32     `json:"stock"`
+	ImageURL    string    `json:"image_url"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
 }
+
+
 
 type ProductFilter struct {
 	Query      string     `json:"query"`
@@ -38,6 +41,8 @@ type Cursor struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
+
 type ProductRepository interface {
 	GetList(ctx context.Context, filter ProductFilter) ([]Product, error)
+	Create(ctx context.Context, p *Product) error
 }

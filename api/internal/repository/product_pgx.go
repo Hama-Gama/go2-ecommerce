@@ -40,9 +40,11 @@ func (r *ProductRepository) GetList(ctx context.Context, filter domain.ProductFi
 		argPos++
 	}
 
-	query := `
-		SELECT id, category_id, title, slug, description, price, stock, created_at, updated_at
-		FROM products`
+
+		query := `
+	SELECT p.id, p.category_id, p.title, p.slug, p.description, p.price, COALESCE(i.stock, 0), p.image_url, p.created_at, p.updated_at
+	FROM products p
+	LEFT JOIN inventories i ON p.id = i.product_id`
 
 	if len(conditions) > 0 {
 		query += " WHERE " + strings.Join(conditions, " AND ")
@@ -87,4 +89,35 @@ func (r *ProductRepository) GetList(ctx context.Context, filter domain.ProductFi
 	}
 
 	return products, nil
+}
+
+
+func (r *ProductRepository) Create(ctx context.Context, p *Product) error {
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to begin tx: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	insertProduct := `
+		INSERT INTO products (category_id, title, slug, description, price, image_url)
+		VALUES ($1, $2, $3, $4, $5, $6)
+		RETURNING id, created_at, updated_at`
+
+	err = tx.QueryRow(ctx, insertProduct,
+		p.CategoryID, p.Title, p.Slug, p.Description, p.Price, p.ImageURL,
+	).Scan(&p.ID, &p.CreatedAt, &p.UpdatedAt)
+	if err != nil {
+		return fmt.Errorf("failed to insert product: %w", err)
+	}
+
+	insertInventory := `
+		INSERT INTO inventories (product_id, stock)
+		VALUES ($1, $2)`
+
+	if _, err := tx.Exec(ctx, insertInventory, p.ID, p.Stock); err != nil {
+		return fmt.Errorf("failed to insert inventory: %w", err)
+	}
+
+	return tx.Commit(ctx)
 }

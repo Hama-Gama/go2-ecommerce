@@ -55,3 +55,8 @@ func (s *ProductService) GetProducts(ctx context.Context, filter domain.ProductF
 		HasMore:    hasMore,
 	}, nil
 }
+
+
+func (s *ProductService) CreateProduct(ctx context.Context, p *domain.Product) error {
+	return s.repo.Create(ctx, p)
+}

@@ -13,17 +13,16 @@ import (
 	"github.com/go-chi/cors"
 	"github.com/hibiken/asynq"
 
+	_ "github.com/yourusername/go-ecommerce-api/docs"
 	"github.com/yourusername/go-ecommerce-api/internal/handler"
 	"github.com/yourusername/go-ecommerce-api/internal/repository"
 	"github.com/yourusername/go-ecommerce-api/internal/service"
 	"github.com/yourusername/go-ecommerce-api/internal/task"
-	_ "github.com/yourusername/go-ecommerce-api/docs"
-	"github.com/swaggo/http-swagger"
+	httpSwagger "github.com/swaggo/http-swagger"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-// Helper-функция для чтения переменных окружения с фолбэком
 func getEnv(key, defaultValue string) string {
 	if val := os.Getenv(key); val != "" {
 		return val
@@ -39,7 +38,6 @@ func getEnv(key, defaultValue string) string {
 func main() {
 	ctx := context.Background()
 
-	// 1. Подключение к PostgreSQL (динамически из Env, чтобы корректно работать в Docker)
 	pgCfg := repository.PostgresConfig{
 		Host:     getEnv("DB_HOST", "localhost"),
 		Port:     getEnv("DB_PORT", "5432"),
@@ -55,39 +53,32 @@ func main() {
 	}
 	defer pool.Close()
 
-	// 2. Опции подключения к Redis для Asynq (динамически из Env)
 	redisOpt := asynq.RedisClientOpt{
 		Addr: getEnv("REDIS_ADDR", "localhost:6379"),
 	}
 
-	// 3. Инициализация Asynq Distributor (Client) & Processor (Worker)
 	taskDistributor := task.NewRedisTaskDistributor(redisOpt)
 	taskProcessor := task.NewRedisTaskProcessor(redisOpt)
 
-	// Запускаем Asynq Worker в отдельной горутине
 	go func() {
 		if err := taskProcessor.Start(); err != nil {
 			log.Fatalf("Failed to start task processor: %v", err)
 		}
 	}()
 
-	// 4. Инициализация слоев Products
 	productRepo := repository.NewProductRepository(pool)
 	productSvc := service.NewProductService(productRepo)
 	productHnd := handler.NewProductHandler(productSvc)
 
-	// 5. Инициализация слоев Orders (передаем taskDistributor)
 	orderRepo := repository.NewOrderRepository(pool)
 	orderSvc := service.NewOrderService(orderRepo, taskDistributor)
 	orderHnd := handler.NewOrderHandler(orderSvc)
 
-	// 6. Настройка роутера Chi
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Timeout(60 * time.Second))
 
-	// CORS middleware для соединения с Next.js
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins: []string{
 			"http://localhost:3000",
@@ -106,8 +97,13 @@ func main() {
 	// Routes
 	r.Get("/metrics", promhttp.Handler().ServeHTTP)
 	r.Get("/api/v1/products", productHnd.GetProducts)
+	r.Post("/api/v1/admin/products", productHnd.CreateProduct)
 	r.Post("/api/v1/orders", orderHnd.CreateOrder)
 	r.Get("/swagger/*", httpSwagger.WrapHandler)
+
+	// Раздача загруженных картинок
+	fileServer := http.FileServer(http.Dir("./uploads"))
+	r.Handle("/uploads/*", http.StripPrefix("/uploads", fileServer))
 
 	fmt.Println("🚀 API Server & Asynq Worker are running on :8080")
 	if err := http.ListenAndServe(":8080", r); err != nil {

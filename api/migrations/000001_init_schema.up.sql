@@ -17,7 +17,8 @@ CREATE TABLE categories (
     slug VARCHAR(100) UNIQUE NOT NULL
 );
 
--- 3. Товары (с полнотекстовым поиском)
+
+-- 3. Товары (с полнотекстовым поиском, остатком и фото)
 CREATE TABLE products (
     id BIGSERIAL PRIMARY KEY,
     category_id INT NOT NULL REFERENCES categories(id) ON DELETE RESTRICT,
@@ -25,6 +26,7 @@ CREATE TABLE products (
     slug VARCHAR(255) UNIQUE NOT NULL,
     description TEXT,
     price NUMERIC(12, 2) NOT NULL CHECK (price >= 0),
+    image_url TEXT NOT NULL DEFAULT '',
     tsv TSVECTOR,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -55,15 +57,16 @@ CREATE TABLE inventories (
 -- Тестовые данные для мгновенного поиска
 INSERT INTO categories (id, name, slug) VALUES (1, 'Electronics', 'electronics');
 
-INSERT INTO products (id, category_id, title, slug, description, price) VALUES
-(1, 1, 'Pro Wireless Gaming Mouse', 'pro-wireless-gaming-mouse', 'Ultra lightweight gaming mouse with high precision sensor', 89.99),
-(2, 1, 'Mechanical Keyboard RGB', 'mechanical-keyboard-rgb', 'Tactile mechanical keyboard with customizable RGB backlight', 129.99),
-(3, 1, 'Noise Canceling Headphones', 'noise-canceling-headphones', 'Over-ear Bluetooth headphones with active noise cancellation', 199.99);
+INSERT INTO products (id, category_id, title, slug, description, price, stock, image_url) VALUES
+(1, 1, 'Pro Wireless Gaming Mouse', 'pro-wireless-gaming-mouse', 'Ultra lightweight gaming mouse with high precision sensor', 89.99, 50, ''),
+(2, 1, 'Mechanical Keyboard RGB', 'mechanical-keyboard-rgb', 'Tactile mechanical keyboard with customizable RGB backlight', 129.99, 3, ''),
+(3, 1, 'Noise Canceling Headphones', 'noise-canceling-headphones', 'Over-ear Bluetooth headphones with active noise cancellation', 199.99, 0, '');
 
-INSERT INTO inventories (product_id, stock) VALUES
-(1, 50),
-(2, 20),
-(3, 0);
+-- Сбрасываем sequence после ручной вставки ID, чтобы новые товары из админки получали ID = 4 и выше
+SELECT setval('products_id_seq', (SELECT MAX(id) FROM products));
+SELECT setval('categories_id_seq', (SELECT MAX(id) FROM categories));
+
+
 
 -- 5. Заказы
 CREATE TYPE order_status AS ENUM ('pending', 'processing', 'completed', 'cancelled');
@@ -89,3 +92,6 @@ CREATE TABLE IF NOT EXISTS order_items (
 );
 
 CREATE INDEX IF NOT EXISTS idx_order_items_order_id ON order_items(order_id);
+
+SELECT setval('products_id_seq', (SELECT MAX(id) FROM products));
+SELECT setval('categories_id_seq', (SELECT MAX(id) FROM categories));

@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:16
+    image: postgres:16-alpine
     container_name: ecommerce_postgres_prod
     environment:
       POSTGRES_USER: postgres
@@ -8,18 +8,40 @@ services:
       POSTGRES_DB: ecommerce_db
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d ecommerce_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     restart: always
 
+  migrate:
+    image: migrate/migrate:v4.17.1
+    container_name: ecommerce_migrate_prod
+    volumes:
+      - ./api/migrations:/migrations:ro
+    command:
+      - "-path=/migrations"
+      - "-database=postgres://postgres:postgrespassword@postgres:5432/ecommerce_db?sslmode=disable"
+      - "up"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
   redis:
-    image: redis:7
+    image: redis:7-alpine
     container_name: ecommerce_redis_prod
     restart: always
 
   api:
+    image: ${API_IMAGE:-go2-ecommerce-api:latest}
     build:
       context: ./api
       dockerfile: Dockerfile
     container_name: ecommerce_api_prod
+    volumes:
+      - ./uploads:/app/uploads
     environment:
       - DB_HOST=postgres
       - DB_PORT=5432
@@ -28,26 +50,34 @@ services:
       - DB_NAME=ecommerce_db
       - REDIS_ADDR=redis:6379
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_started
     restart: always
 
   web:
+    image: ${WEB_IMAGE:-go2-ecommerce-web:latest}
     build:
       context: ./web
       dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: /api/v1
     container_name: ecommerce_web_prod
     depends_on:
       - api
     restart: always
 
   nginx:
-    image: nginx:latest
+    image: nginx:alpine
     container_name: ecommerce_nginx_prod
     ports:
       - "80:80"
     volumes:
       - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./uploads:/app/uploads:ro
     depends_on:
       - web
       - api
